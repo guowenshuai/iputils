@@ -4,6 +4,7 @@
 
 # CC
 CC=gcc
+#用gcc编译
 # Path to parent kernel include files directory
 LIBC_INCLUDE=/usr/include
 # Libraries
