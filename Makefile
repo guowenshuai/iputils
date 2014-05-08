@@ -4,14 +4,19 @@
 
 # CC
 CC=gcc
-#用gcc编译
+#指定用gcc编译
 # Path to parent kernel include files directory
 LIBC_INCLUDE=/usr/include
+#定义变量指定到目录/usr/include
 # Libraries
 ADDLIB=
 # Linker flags
+#Wl选项告诉编译器将后面的参数传递给链接器 Path to parent kernel include files directory
+#-Wl,-Bstatic告诉链接器使用-Bstatic选项，该选项是告诉链接器，对接下来的-l选项使用静态链接
+#-Wl,-Bdynamic就是告诉链接器对接下来的-l选项使用动态链接
 LDFLAG_STATIC=-Wl,-Bstatic
 LDFLAG_DYNAMIC=-Wl,-Bdynamic
+#指定加载库
 LDFLAG_CAP=-lcap
 LDFLAG_GNUTLS=-lgnutls-openssl
 LDFLAG_CRYPTO=-lcrypto
@@ -24,6 +29,7 @@ LDFLAG_SYSFS=-lsysfs
 #
 
 # Capability support (with libcap) [yes|static|no]
+#变量定义，设置开关
 USE_CAP=yes
 # sysfs support (with libsysfs - deprecated) [no|yes|static]
 USE_SYSFS=no
@@ -42,7 +48,7 @@ USE_CRYPTO=shared
 # Resolv library for ping6 [yes|static]
 USE_RESOLV=yes
 # ping6 source routing (deprecated by RFC5095) [no|yes|RFC3542]
-ENABLE_PING6_RTHDR=no
+ENABLE_PING6_RTHDR=
 
 # rdisc server (-r option) support [no|yes]
 ENABLE_RDISC_SERVER=no
@@ -50,19 +56,24 @@ ENABLE_RDISC_SERVER=no
 # -------------------------------------
 # What a pity, all new gccs are buggy and -Werror does not work. Sigh.
 # CCOPT=-fno-strict-aliasing -Wstrict-prototypes -Wall -Werror -g
+#-Wstrict-prototypes: 如果函数的声明或定义没有指出参数类型，编译器就发出警告
 CCOPT=-fno-strict-aliasing -Wstrict-prototypes -Wall -g
 CCOPTOPT=-O3
+#-O3表示优化模式
 GLIBCFIX=-D_GNU_SOURCE
 DEFINES=
 LDLIB=
 
 FUNC_LIB = $(if $(filter static,$(1)),$(LDFLAG_STATIC) $(2) $(LDFLAG_DYNAMIC),$(2))
-
+#$符号是makefile中调用变量地意思
+#定义变量调用if函数；如果非空则$(LDFLAG_STATIC) $(2) 否则执行$(LDFLAG_DYNAMIC),$(2)
+#$（1），$（2），$（3）表示不明白
 # USE_GNUTLS: DEF_GNUTLS, LIB_GNUTLS
 # USE_CRYPTO: LIB_CRYPTO
 ifneq ($(USE_GNUTLS),no)
 	LIB_CRYPTO = $(call FUNC_LIB,$(USE_GNUTLS),$(LDFLAG_GNUTLS))
 	DEF_CRYPTO = -DUSE_GNUTLS
+#call 函数是唯一一个可以用来创建新的参数化的函数，参数取代
 else
 	LIB_CRYPTO = $(call FUNC_LIB,$(USE_CRYPTO),$(LDFLAG_CRYPTO))
 endif
@@ -110,7 +121,7 @@ endif
 IPV4_TARGETS=tracepath ping clockdiff rdisc arping tftpd rarpd
 IPV6_TARGETS=tracepath6 traceroute6 ping6
 TARGETS=$(IPV4_TARGETS) $(IPV6_TARGETS)
-
+#变量或者说宏
 CFLAGS=$(CCOPTOPT) $(CCOPT) $(GLIBCFIX) $(DEFINES)
 LDLIBS=$(LDLIB) $(ADDLIB)
 
@@ -119,20 +130,27 @@ LASTTAG:=$(shell git describe HEAD | sed -e 's/-.*//')
 TODAY=$(shell date +%Y/%m/%d)
 DATE=$(shell date --date $(TODAY) +%Y%m%d)
 TAG:=$(shell date --date=$(TODAY) +s%Y%m%d)
-
+#用shell函数获取系统信息并作为返回值赋值给定义地变量
 
 # -------------------------------------
 .PHONY: all ninfod clean distclean man html check-kernel modules snapshot
-
+#.PHONY表示之后的为伪目标文件，需要输入make xxx命令来执行
 all: $(TARGETS)
+#伪目标，生成多个目标
 
 %.s: %.c
 	$(COMPILE.c) $< $(DEF_$(patsubst %.o,%,$@)) -S -o $@
+#目标文件（模式.s）：依赖文件(模式.c)
+#COMPILE.c=$(CC) $(CFLAGS) $(CPPFLAGS) -c
+#$<（自动化变量） 依赖目标文件集
+# $@ 表示目标文件集
+#patsubst函数模式字符串替换函数，在目标集中查找去掉.O
+
 %.o: %.c
 	$(COMPILE.c) $< $(DEF_$(patsubst %.o,%,$@)) -o $@
 $(TARGETS): %: %.o
 	$(LINK.o) $^ $(LIB_$@) $(LDLIBS) -o $@
-
+## LINK.o把.o文件链接在一起的命令行,缺省值是$(CC) $(LDFLAGS) $(TARGET_ARCH)
 # -------------------------------------
 # arping
 DEF_arping = $(DEF_SYSFS) $(DEF_CAP) $(DEF_IDN) $(DEF_WITHOUT_IFADDRS)
